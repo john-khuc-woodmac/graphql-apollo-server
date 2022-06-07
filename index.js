@@ -1,58 +1,34 @@
-const { ApolloServer, gql } = require('apollo-server');
-
-// A scehma is a collection of type definitions (hence "typeDefs")
-// that together define the "shape" of queries that are executed against
-// your data.
+const { Neo4jGraphQL } = require("@neo4j/graphql");
+const { ApolloServer, gql } = require("apollo-server");
+const neo4j = require("neo4j-driver");
 
 const typeDefs = gql`
-    # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
-
-    # This "Book" type defines the queryable fields for every book in our data source.
-    type Book {
+    type Movie {
         title: String
-        author: String
+        actors: [Actor!]! @relationship(type: "ACTED_IN", direction: IN)
     }
 
-    # The "Query" type is special: it lists all of the available queries that
-    # clients can execute, along with the return type for each. In this
-    # case, the "books" query returns an array of zero or more Books (defined above).
-    type Query {
-        books: [Book]
+    type Actor {
+        name: String
+        movies: [Movie!]! @relationship(type: "ACTED_IN", direction: OUT)
     }
 `;
 
-const books = [
-    {
-        title: "Mocking Bird",
-        author: "Mozart"
-    },
-    {
-        title: "How to fill a lake",
-        author: "Garden Hose"
-    }
-]
+// instance of neo4j graphql
+const driver = neo4j.driver(
+    "bolt://198.19.143.26:7687",
+    neo4j.auth.basic("neo4j","password")
+)
 
-// Resolvers define the technique for fetching the types defined in the
-// schema. This resolver retrieves books from the "books" array above.
-const resolvers = {
-    Query: {
-        books: () => books,
-    },
-}
+const neo4jSchema = new Neo4jGraphQL({ typeDefs, driver })
 
-// The ApolloServer constructor requires two parameters: your schema
-// definition and your set of resolvers.
-const server = new ApolloServer({
-    typeDefs,
-    resolvers,
-    csrfPrevention: true,
-    introspection: true
-})
+// instance of apolloserver
+neo4jSchema.getSchema().then(schema => {
+    const server = new ApolloServer({
+        schema
+    })
 
-// The `listen` method launches a web server.
-server.listen({ port: process.env.PORT || 4000}).then(({ url }) => {
-    console.log(`
-        🚀  Server is ready at ${url}
-        📭  Query at https://studio.apollographql.com/dev
-    `)
+    server.listen().then(({ url }) => {
+        console.log(`🚀 Server ready at ${url}`);
+    })
 })
