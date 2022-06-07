@@ -46,6 +46,7 @@ const server = new ApolloServer({
     typeDefs,
     resolvers,
     csrfPrevention: true,
+    introspection: true
 })
 
 // The `listen` method launches a web server.
